@@ -33,8 +33,6 @@ def setup_chinese_font():
             raise FileNotFoundError("未在当前目录找到 SimHei.ttf 字体文件")
         
         # 3. 强制设置字体
-        st.info(f"强制使用字体文件: {os.path.basename(font_path)}")
-        
         # 清除字体缓存
         if hasattr(fm, '_rebuild'):
             fm._rebuild()
@@ -56,7 +54,6 @@ def setup_chinese_font():
         test_ax.axis('off')
         plt.close(test_fig)
         
-        st.success("字体设置成功！")
         return font_path
         
     except Exception as e:
@@ -194,6 +191,27 @@ header {visibility: hidden;}
 .metric-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* 统计卡片样式 */
+.stat-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    padding: 15px;
+    color: white;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.stat-value {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin: 5px 0;
+}
+
+.stat-label {
+    font-size: 0.8em;
+    opacity: 0.9;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -348,54 +366,9 @@ def plot_recent_data(time_data, data_dict, title, ylabel, colors=None, recent_po
         return fig, True
     return None, False
 
-# 字体验证函数
-def verify_chinese_font():
-    """验证中文字体是否正常工作"""
-    try:
-        font_prop = get_font_properties()
-        
-        # 创建测试图表
-        fig, ax = plt.subplots(figsize=(6, 3))
-        
-        # 测试中文文本
-        test_texts = ['数据中心监控', '温度湿度', '中文测试']
-        
-        for i, text in enumerate(test_texts):
-            if font_prop:
-                ax.text(0.5, 0.8 - i*0.3, text, ha='center', va='center', 
-                       fontsize=16, transform=ax.transAxes, fontproperties=font_prop)
-            else:
-                ax.text(0.5, 0.8 - i*0.3, text, ha='center', va='center', 
-                       fontsize=16, transform=ax.transAxes)
-        
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        ax.axis('off')
-        
-        if font_prop:
-            ax.set_title('字体测试', fontproperties=font_prop, fontsize=18, fontweight='bold')
-        else:
-            ax.set_title('Font Test', fontsize=18, fontweight='bold')
-        
-        plt.tight_layout()
-        return fig
-    except Exception as e:
-        st.error(f"字体验证失败: {e}")
-        return None
-
 # 页面路由
 if page == "📊 主界面":
     st.title("数据中心综合监控系统")
-    
-    # 字体测试（开发时使用，正式部署时可注释掉）
-    with st.expander("🔧 字体测试", expanded=False):
-        if st.button("测试中文字体显示"):
-            test_fig = verify_chinese_font()
-            if test_fig:
-                st.pyplot(test_fig)
-                st.success("中文字体显示正常！")
-            else:
-                st.error("中文字体显示失败！")
     
     if st.session_state.data_loaded and st.session_state.all_data:
         all_data = st.session_state.all_data
@@ -608,18 +581,33 @@ elif page == "🌡️ 数据中心温度":
         else:
             st.warning("所选区域暂无温度数据")
         
-        # 温度统计
+        # 温度统计 - 显示最大值最小值
         st.subheader("📊 温度统计")
-        stat_cols = st.columns(5)
-        for i, area in enumerate(areas):
+        for area in areas:
             if st.session_state.temp_areas[area]:
                 data_key = area_mapping[area]
                 data = all_data[data_key]
                 valid_data = [x for x in data if x != 0]
-                with stat_cols[i]:
-                    if valid_data:
-                        latest_temp = valid_data[-1] if valid_data else 0
-                        st.metric(f"{area}温度", f"{latest_temp:.1f}℃", delta=f"平均:{np.mean(valid_data):.1f}℃")
+                
+                if valid_data:
+                    latest_temp = valid_data[-1] if valid_data else 0
+                    avg_temp = np.mean(valid_data)
+                    max_temp = np.max(valid_data)
+                    min_temp = np.min(valid_data)
+                    
+                    st.write(f"**{area}**")
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.metric("当前温度", f"{latest_temp:.1f}℃")
+                    with col2:
+                        st.metric("平均温度", f"{avg_temp:.1f}℃")
+                    with col3:
+                        st.metric("最高温度", f"{max_temp:.1f}℃")
+                    with col4:
+                        st.metric("最低温度", f"{min_temp:.1f}℃")
+                    
+                    st.markdown("---")
     
     else:
         st.info("⏳ 数据加载中，请稍候...")
@@ -669,18 +657,33 @@ elif page == "💧 数据中心湿度":
         else:
             st.warning("所选区域暂无湿度数据")
         
-        # 湿度统计
+        # 湿度统计 - 显示最大值最小值
         st.subheader("📊 湿度统计")
-        stat_cols = st.columns(5)
-        for i, area in enumerate(areas):
+        for area in areas:
             if st.session_state.hum_areas[area]:
                 data_key = area_mapping[area]
                 data = all_data[data_key]
                 valid_data = [x for x in data if x != 0]
-                with stat_cols[i]:
-                    if valid_data:
-                        latest_hum = valid_data[-1] if valid_data else 0
-                        st.metric(f"{area}湿度", f"{latest_hum:.1f}%", delta=f"平均:{np.mean(valid_data):.1f}%")
+                
+                if valid_data:
+                    latest_hum = valid_data[-1] if valid_data else 0
+                    avg_hum = np.mean(valid_data)
+                    max_hum = np.max(valid_data)
+                    min_hum = np.min(valid_data)
+                    
+                    st.write(f"**{area}**")
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.metric("当前湿度", f"{latest_hum:.1f}%")
+                    with col2:
+                        st.metric("平均湿度", f"{avg_hum:.1f}%")
+                    with col3:
+                        st.metric("最高湿度", f"{max_hum:.1f}%")
+                    with col4:
+                        st.metric("最低湿度", f"{min_hum:.1f}%")
+                    
+                    st.markdown("---")
     
     else:
         st.info("⏳ 数据加载中，请稍候...")
