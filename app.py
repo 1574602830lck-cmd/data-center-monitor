@@ -8,8 +8,6 @@ from PIL import Image
 import base64
 import tempfile
 from io import BytesIO
-import requests
-import matplotlib.font_manager as fm
 
 # 延迟导入
 try:
@@ -17,49 +15,9 @@ try:
 except ImportError:
     st.error("缺少 python-docx 库")
 
-# 下载并设置中文字体
-def setup_chinese_font():
-    """下载并设置中文字体"""
-    try:
-        # 检查是否在Streamlit Cloud环境
-        if 'STREAMLIT_SHARING_MODE' in os.environ or 'STREAMLIT_SERVER_HEADLESS' in os.environ:
-            # 在云端环境，下载中文字体
-            font_url = "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf"
-            font_path = "/tmp/NotoSansCJKsc-Regular.otf"
-            
-            if not os.path.exists(font_path):
-                response = requests.get(font_url)
-                with open(font_path, 'wb') as f:
-                    f.write(response.content)
-            
-            # 设置matplotlib使用下载的字体
-            if os.path.exists(font_path):
-                fm.fontManager.addfont(font_path)
-                prop = fm.FontProperties(fname=font_path)
-                plt.rcParams['font.family'] = prop.get_name()
-                plt.rcParams['font.sans-serif'] = [prop.get_name(), 'DejaVu Sans', 'Arial Unicode MS', 'sans-serif']
-            else:
-                # 如果下载失败，使用系统字体
-                plt.rcParams['font.family'] = ['DejaVu Sans', 'Arial Unicode MS', 'sans-serif']
-        else:
-            # 本地环境使用原有设置
-            plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans', 'Arial Unicode MS', 'sans-serif']
-        
-        plt.rcParams['axes.unicode_minus'] = False
-        
-        # 测试字体
-        fig, ax = plt.subplots(1, 1, figsize=(2, 2))
-        ax.text(0.5, 0.5, '测试中文', fontsize=12, ha='center', va='center')
-        plt.close(fig)
-        
-    except Exception as e:
-        st.warning(f"字体设置警告: {e}")
-        # 最基本的回退设置
-        plt.rcParams['font.family'] = ['DejaVu Sans', 'sans-serif']
-        plt.rcParams['axes.unicode_minus'] = False
-
-# 初始化字体设置
-setup_chinese_font()
+# 设置中文字体
+plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
+plt.rcParams['axes.unicode_minus'] = False
 
 def logo_to_base64(image):
     buffered = BytesIO()
@@ -93,14 +51,6 @@ header {visibility: hidden;}
 }
 .logo-img {
     max-height: 60px;
-}
-
-/* 改善图表容器样式 */
-.chart-container {
-    background-color: white;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -258,29 +208,6 @@ def extract_all_data(rawcontent):
         'PUE': PUE
     }
 
-# 创建图表时设置字体
-def create_chart():
-    """创建图表并确保中文字体正常工作"""
-    fig, ax = plt.subplots(figsize=(10, 4))
-    ax.set_facecolor('white')
-    
-    # 设置图表字体
-    try:
-        # 获取当前字体
-        current_font = plt.rcParams['font.family']
-        if isinstance(current_font, list):
-            current_font = current_font[0]
-        
-        # 设置标题和标签字体
-        title_font = {'fontname': current_font, 'fontsize': 11}
-        label_font = {'fontname': current_font, 'fontsize': 9}
-        tick_font = {'fontname': current_font, 'fontsize': 8}
-        
-        return fig, ax, title_font, label_font, tick_font
-    except:
-        # 如果字体设置失败，使用默认设置
-        return fig, ax, {'fontsize': 11}, {'fontsize': 9}, {'fontsize': 8}
-
 # 侧边栏
 with st.sidebar:
     st.title("🏢 数据中心监控系统")
@@ -416,7 +343,8 @@ elif page == "🌡️ 数据中心温度":
             col_chart, col_info = st.columns([3, 1])
             
             with col_chart:
-                fig, ax, title_font, label_font, tick_font = create_chart()
+                fig, ax = plt.subplots(figsize=(10, 4))
+                ax.set_facecolor('white')
                 
                 if st.session_state.active_plots:
                     for name in st.session_state.active_plots:
@@ -435,9 +363,9 @@ elif page == "🌡️ 数据中心温度":
                     
                     ax.legend(loc='upper right', fontsize=8)
                     ax.grid(True, linestyle='--', alpha=0.7)
-                    ax.set_xlabel('日期', **label_font)
-                    ax.set_ylabel('温度 （℃）', **label_font)
-                    ax.set_title('数据中心温度走势表', **title_font)
+                    ax.set_xlabel('日期', fontsize=9)
+                    ax.set_ylabel('温度 （℃）', fontsize=9)
+                    ax.set_title('数据中心温度走势表', fontsize=11)
                     
                     plt.xticks(rotation=45, fontsize=8)
                     plt.yticks(fontsize=8)
@@ -450,9 +378,9 @@ elif page == "🌡️ 数据中心温度":
                     ax.set_xlim(0, 10)
                     ax.set_ylim(0, 40)
                     ax.grid(True, linestyle='--', alpha=0.7)
-                    ax.set_xlabel('日期', **label_font)
-                    ax.set_ylabel('温度 （℃）', **label_font)
-                    ax.set_title('数据中心温度走势表', **title_font)
+                    ax.set_xlabel('日期', fontsize=9)
+                    ax.set_ylabel('温度 （℃）', fontsize=9)
+                    ax.set_title('数据中心温度走势表', fontsize=11)
                 
                 st.pyplot(fig)
             
@@ -519,7 +447,8 @@ elif page == "💧 数据中心湿度":
             col_chart, col_info = st.columns([3, 1])
             
             with col_chart:
-                fig, ax, title_font, label_font, tick_font = create_chart()
+                fig, ax = plt.subplots(figsize=(10, 4))
+                ax.set_facecolor('white')
                 
                 if st.session_state.active_plots:
                     for name in st.session_state.active_plots:
@@ -538,9 +467,9 @@ elif page == "💧 数据中心湿度":
                     
                     ax.legend(loc='upper right', fontsize=8)
                     ax.grid(True, linestyle='--', alpha=0.7)
-                    ax.set_xlabel('日期', **label_font)
-                    ax.set_ylabel('湿度 （%）', **label_font)
-                    ax.set_title('数据中心湿度走势表', **title_font)
+                    ax.set_xlabel('日期', fontsize=9)
+                    ax.set_ylabel('湿度 （%）', fontsize=9)
+                    ax.set_title('数据中心湿度走势表', fontsize=11)
                     
                     plt.xticks(rotation=45, fontsize=8)
                     plt.yticks(fontsize=8)
@@ -553,9 +482,9 @@ elif page == "💧 数据中心湿度":
                     ax.set_xlim(0, 10)
                     ax.set_ylim(0, 100)
                     ax.grid(True, linestyle='--', alpha=0.7)
-                    ax.set_xlabel('日期', **label_font)
-                    ax.set_ylabel('湿度 （%）', **label_font)
-                    ax.set_title('数据中心湿度走势表', **title_font)
+                    ax.set_xlabel('日期', fontsize=9)
+                    ax.set_ylabel('湿度 （%）', fontsize=9)
+                    ax.set_title('数据中心湿度走势表', fontsize=11)
                 
                 st.pyplot(fig)
             
@@ -592,7 +521,8 @@ elif page == "⚡ PUE指标":
             if time_data and pue_data:
                 st.subheader("📈 PUE走势图表")
                 
-                fig, ax, title_font, label_font, tick_font = create_chart()
+                fig, ax = plt.subplots(figsize=(10, 4))
+                ax.set_facecolor('white')
                 
                 # 确保时间序列和数据长度匹配
                 min_len = min(len(time_data), len(pue_data))
@@ -602,9 +532,9 @@ elif page == "⚡ PUE指标":
                 
                 ax.legend(loc='upper right', fontsize=8)
                 ax.grid(True, linestyle='--', alpha=0.7)
-                ax.set_xlabel('日期', **label_font)
-                ax.set_ylabel('PUE值', **label_font)
-                ax.set_title('数据中心PUE能效走势表', **title_font)
+                ax.set_xlabel('日期', fontsize=9)
+                ax.set_ylabel('PUE值', fontsize=9)
+                ax.set_title('数据中心PUE能效走势表', fontsize=11)
                 
                 plt.xticks(rotation=45, fontsize=8)
                 plt.yticks(fontsize=8)
@@ -647,7 +577,8 @@ elif page == "🎈 氢气传感器":
             if time_data and hydr_data:
                 st.subheader("📈 氢气浓度走势图表")
                 
-                fig, ax, title_font, label_font, tick_font = create_chart()
+                fig, ax = plt.subplots(figsize=(10, 4))
+                ax.set_facecolor('white')
                 
                 # 确保时间序列和数据长度匹配
                 min_len = min(len(time_data), len(hydr_data))
@@ -655,9 +586,9 @@ elif page == "🎈 氢气传感器":
                 
                 ax.legend(['氢气浓度'], loc='upper right', fontsize=8)
                 ax.grid(True, linestyle='--', alpha=0.7)
-                ax.set_xlabel('日期', **label_font)
-                ax.set_ylabel('氢气浓度 (ppm)', **label_font)
-                ax.set_title('电池间氢气浓度监测', **title_font)
+                ax.set_xlabel('日期', fontsize=9)
+                ax.set_ylabel('氢气浓度 (ppm)', fontsize=9)
+                ax.set_title('电池间氢气浓度监测', fontsize=11)
                 
                 plt.xticks(rotation=45, fontsize=8)
                 plt.yticks(fontsize=8)
