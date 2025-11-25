@@ -86,12 +86,44 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS样式优化 - 移除logo容器的margin
+# CSS样式优化 - 移动端适配
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header {visibility: hidden;}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .logo-container {
+        height: 80px !important;
+    }
+    
+    .stats-card {
+        padding: 15px !important;
+        margin-bottom: 10px !important;
+    }
+    
+    .stats-card .value {
+        font-size: 1.5em !important;
+    }
+    
+    .metric-card {
+        padding: 15px !important;
+        margin-bottom: 10px !important;
+    }
+    
+    /* 移动端列布局调整 */
+    .mobile-columns {
+        flex-direction: column;
+    }
+    
+    /* 移动端按钮调整 */
+    .stButton button {
+        font-size: 14px !important;
+        padding: 8px 12px !important;
+    }
+}
 
 .logo-container {
     height: 120px;
@@ -101,8 +133,8 @@ header {visibility: hidden;}
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 0px;  /* 移除底部边距 */
-    border-radius: 0;    /* 移除圆角 */
+    margin-bottom: 0px;
+    border-radius: 0;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     overflow: hidden;
 }
@@ -110,6 +142,7 @@ header {visibility: hidden;}
     height: 100%;
     width: auto;
     object-fit: contain;
+    max-width: 100%;
 }
 
 /* 新版数据统计卡片样式 */
@@ -193,18 +226,45 @@ header {visibility: hidden;}
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 }
 
-/* 统计卡片样式 */
-.stat-card {
+/* 移动端图表容器 */
+.chart-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* 移动端区域选择按钮 */
+.area-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.area-button {
+    flex: 1;
+    min-width: 80px;
+}
+
+/* 移动端统计卡片 */
+.stat-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.stat-item {
+    flex: 1;
+    min-width: 120px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 10px;
     padding: 15px;
     color: white;
     text-align: center;
-    margin-bottom: 10px;
 }
 
 .stat-value {
-    font-size: 1.5em;
+    font-size: 1.2em;
     font-weight: bold;
     margin: 5px 0;
 }
@@ -321,7 +381,7 @@ if not st.session_state.data_loaded:
             st.session_state.all_data = all_data
             st.session_state.data_loaded = True
 
-# 图表绘制函数 - 只显示最近数据点
+# 图表绘制函数 - 移动端适配
 def plot_recent_data(time_data, data_dict, title, ylabel, colors=None, recent_points=10):
     if colors is None:
         colors = ['red', 'blue', 'green', 'orange', 'purple']
@@ -329,7 +389,11 @@ def plot_recent_data(time_data, data_dict, title, ylabel, colors=None, recent_po
     # 获取字体属性
     font_prop = get_font_properties()
     
-    fig, ax = plt.subplots(figsize=(10, 4))
+    # 移动端适配的图表大小
+    fig_width = 8 if st.session_state.get('is_mobile', False) else 10
+    fig_height = 3 if st.session_state.get('is_mobile', False) else 4
+    
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
     has_data = False
     
     for i, (label, data) in enumerate(data_dict.items()):
@@ -348,23 +412,43 @@ def plot_recent_data(time_data, data_dict, title, ylabel, colors=None, recent_po
                 has_data = True
     
     if has_data:
+        # 移动端适配的字体大小
+        title_size = 10 if st.session_state.get('is_mobile', False) else 12
+        label_size = 8 if st.session_state.get('is_mobile', False) else 10
+        legend_size = 7 if st.session_state.get('is_mobile', False) else 8
+        tick_size = 7 if st.session_state.get('is_mobile', False) else 8
+        
         if font_prop:
-            ax.set_title(title, fontproperties=font_prop, fontsize=12, fontweight='bold')
-            ax.set_ylabel(ylabel, fontproperties=font_prop, fontsize=10)
-            ax.set_xlabel('时间', fontproperties=font_prop, fontsize=10)
-            ax.legend(prop=font_prop, fontsize=8)
-            plt.xticks(rotation=45, fontproperties=font_prop, fontsize=8)
+            ax.set_title(title, fontproperties=font_prop, fontsize=title_size, fontweight='bold')
+            ax.set_ylabel(ylabel, fontproperties=font_prop, fontsize=label_size)
+            ax.set_xlabel('时间', fontproperties=font_prop, fontsize=label_size)
+            ax.legend(prop=font_prop, fontsize=legend_size)
+            plt.xticks(rotation=45, fontproperties=font_prop, fontsize=tick_size)
         else:
-            ax.set_title(title, fontsize=12, fontweight='bold')
-            ax.set_ylabel(ylabel, fontsize=10)
-            ax.set_xlabel('Time', fontsize=10)
-            ax.legend(fontsize=8)
-            plt.xticks(rotation=45, fontsize=8)
+            ax.set_title(title, fontsize=title_size, fontweight='bold')
+            ax.set_ylabel(ylabel, fontsize=label_size)
+            ax.set_xlabel('Time', fontsize=label_size)
+            ax.legend(fontsize=legend_size)
+            plt.xticks(rotation=45, fontsize=tick_size)
         
         ax.grid(True, alpha=0.3)
         plt.tight_layout()
         return fig, True
     return None, False
+
+# 检测移动端
+def is_mobile():
+    """检测是否为移动端"""
+    try:
+        # 使用 st.query_params 替代 st.experimental_get_query_params
+        user_agent = st.query_params.get('user_agent', '')
+        mobile_keywords = ['mobile', 'android', 'iphone', 'ipad']
+        return any(keyword in user_agent.lower() for keyword in mobile_keywords)
+    except:
+        return False
+
+# 设置移动端状态
+st.session_state.is_mobile = is_mobile()
 
 # 页面路由
 if page == "📊 主界面":
@@ -373,9 +457,14 @@ if page == "📊 主界面":
     if st.session_state.data_loaded and st.session_state.all_data:
         all_data = st.session_state.all_data
         
-        # 关键指标
+        # 关键指标 - 移动端适配
         st.subheader("📈 关键指标概览")
-        col1, col2, col3, col4 = st.columns(4)
+        if st.session_state.is_mobile:
+            # 移动端使用2x2布局
+            col1, col2 = st.columns(2)
+            col3, col4 = st.columns(2)
+        else:
+            col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             temp_data = []
@@ -410,8 +499,12 @@ if page == "📊 主界面":
         # 重新设计的数据统计
         st.subheader("📊 数据质量分析")
         
-        # 第一行：核心数据指标
-        col1, col2, col3, col4 = st.columns(4)
+        if st.session_state.is_mobile:
+            # 移动端使用2x2布局
+            col1, col2 = st.columns(2)
+            col3, col4 = st.columns(2)
+        else:
+            col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             # 数据完整性
@@ -502,22 +595,20 @@ if page == "📊 主界面":
             </div>
             """, unsafe_allow_html=True)
         
-        # 图表预览 - 只显示最近数据
+        # 图表预览 - 移动端适配
         st.subheader("📈 数据趋势预览")
-        col1, col2 = st.columns(2)
-        
-        with col1:
+        if st.session_state.is_mobile:
+            # 移动端单列显示
             temp_dict = {'主机房': all_data['ZJFTemp'], '冷通道': all_data['LTDTemp']}
-            fig, has_data = plot_recent_data(all_data['time'], temp_dict, '温度趋势 (最近数据)', '温度 (℃)', recent_points=8)
+            fig, has_data = plot_recent_data(all_data['time'], temp_dict, '温度趋势 (最近数据)', '温度 (℃)', recent_points=6)
             if has_data:
                 st.pyplot(fig)
             else:
                 st.info("暂无温度数据")
-        
-        with col2:
+            
             if all_data['PUE'] and any(x != 0 for x in all_data['PUE']):
                 pue_dict = {'PUE': all_data['PUE']}
-                fig, has_data = plot_recent_data(all_data['time'], pue_dict, 'PUE趋势 (最近数据)', 'PUE值', colors=['blue'], recent_points=8)
+                fig, has_data = plot_recent_data(all_data['time'], pue_dict, 'PUE趋势 (最近数据)', 'PUE值', colors=['blue'], recent_points=6)
                 if has_data:
                     ax = fig.axes[0]
                     font_prop = get_font_properties()
@@ -532,6 +623,36 @@ if page == "📊 主界面":
                     st.info("暂无PUE数据")
             else:
                 st.info("暂无PUE数据")
+        else:
+            # 桌面端双列显示
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                temp_dict = {'主机房': all_data['ZJFTemp'], '冷通道': all_data['LTDTemp']}
+                fig, has_data = plot_recent_data(all_data['time'], temp_dict, '温度趋势 (最近数据)', '温度 (℃)', recent_points=8)
+                if has_data:
+                    st.pyplot(fig)
+                else:
+                    st.info("暂无温度数据")
+            
+            with col2:
+                if all_data['PUE'] and any(x != 0 for x in all_data['PUE']):
+                    pue_dict = {'PUE': all_data['PUE']}
+                    fig, has_data = plot_recent_data(all_data['time'], pue_dict, 'PUE趋势 (最近数据)', 'PUE值', colors=['blue'], recent_points=8)
+                    if has_data:
+                        ax = fig.axes[0]
+                        font_prop = get_font_properties()
+                        if font_prop:
+                            ax.axhline(y=1.5, color='green', linestyle='--', alpha=0.5, label='目标值 1.5')
+                            ax.legend(prop=font_prop)
+                        else:
+                            ax.axhline(y=1.5, color='green', linestyle='--', alpha=0.5, label='Target 1.5')
+                            ax.legend()
+                        st.pyplot(fig)
+                    else:
+                        st.info("暂无PUE数据")
+                else:
+                    st.info("暂无PUE数据")
     
     else:
         st.warning("⏳ 正在加载数据，请稍候...")
@@ -542,17 +663,27 @@ elif page == "🌡️ 数据中心温度":
     if st.session_state.data_loaded and st.session_state.all_data:
         all_data = st.session_state.all_data
         
-        # 区域选择
+        # 区域选择 - 移动端适配
         st.subheader("📍 选择监控区域")
-        cols = st.columns(5)
         areas = ['主机房', '冷通道', '电池间', '运营间', '配电间']
         
-        for i, area in enumerate(areas):
-            with cols[i]:
-                if st.button(area, key=f"btn_{area}", use_container_width=True,
-                            type="primary" if st.session_state.temp_areas[area] else "secondary"):
-                    st.session_state.temp_areas[area] = not st.session_state.temp_areas[area]
-                    st.rerun()
+        if st.session_state.is_mobile:
+            # 移动端使用2列布局
+            cols = st.columns(2)
+            for i, area in enumerate(areas):
+                with cols[i % 2]:
+                    if st.button(area, key=f"btn_{area}", use_container_width=True,
+                                type="primary" if st.session_state.temp_areas[area] else "secondary"):
+                        st.session_state.temp_areas[area] = not st.session_state.temp_areas[area]
+                        st.rerun()
+        else:
+            cols = st.columns(5)
+            for i, area in enumerate(areas):
+                with cols[i]:
+                    if st.button(area, key=f"btn_{area}", use_container_width=True,
+                                type="primary" if st.session_state.temp_areas[area] else "secondary"):
+                        st.session_state.temp_areas[area] = not st.session_state.temp_areas[area]
+                        st.rerun()
         
         selected = [area for area, selected in st.session_state.temp_areas.items() if selected]
         if selected:
@@ -560,7 +691,7 @@ elif page == "🌡️ 数据中心温度":
         else:
             st.warning("请至少选择一个监控区域")
         
-        # 温度图表 - 只显示最近数据
+        # 温度图表
         temp_dict = {}
         area_mapping = {
             '主机房': 'ZJFTemp',
@@ -575,13 +706,14 @@ elif page == "🌡️ 数据中心温度":
                 data_key = area_mapping[area]
                 temp_dict[area] = all_data[data_key]
         
-        fig, has_data = plot_recent_data(all_data['time'], temp_dict, '数据中心温度监控 (最近数据)', '温度 (℃)', recent_points=12)
+        fig, has_data = plot_recent_data(all_data['time'], temp_dict, '数据中心温度监控 (最近数据)', '温度 (℃)', 
+                                       recent_points=8 if st.session_state.is_mobile else 12)
         if has_data:
             st.pyplot(fig)
         else:
             st.warning("所选区域暂无温度数据")
         
-        # 温度统计 - 显示最大值最小值
+        # 温度统计 - 移动端适配
         st.subheader("📊 温度统计")
         for area in areas:
             if st.session_state.temp_areas[area]:
@@ -596,7 +728,12 @@ elif page == "🌡️ 数据中心温度":
                     min_temp = np.min(valid_data)
                     
                     st.write(f"**{area}**")
-                    col1, col2, col3, col4 = st.columns(4)
+                    if st.session_state.is_mobile:
+                        # 移动端使用2x2布局
+                        col1, col2 = st.columns(2)
+                        col3, col4 = st.columns(2)
+                    else:
+                        col1, col2, col3, col4 = st.columns(4)
                     
                     with col1:
                         st.metric("当前温度", f"{latest_temp:.1f}℃")
@@ -618,17 +755,27 @@ elif page == "💧 数据中心湿度":
     if st.session_state.data_loaded and st.session_state.all_data:
         all_data = st.session_state.all_data
         
-        # 区域选择
+        # 区域选择 - 移动端适配
         st.subheader("📍 选择监控区域")
-        cols = st.columns(5)
         areas = ['主机房', '冷通道', '电池间', '运营间', '配电间']
         
-        for i, area in enumerate(areas):
-            with cols[i]:
-                if st.button(area, key=f"hum_btn_{area}", use_container_width=True,
-                            type="primary" if st.session_state.hum_areas[area] else "secondary"):
-                    st.session_state.hum_areas[area] = not st.session_state.hum_areas[area]
-                    st.rerun()
+        if st.session_state.is_mobile:
+            # 移动端使用2列布局
+            cols = st.columns(2)
+            for i, area in enumerate(areas):
+                with cols[i % 2]:
+                    if st.button(area, key=f"hum_btn_{area}", use_container_width=True,
+                                type="primary" if st.session_state.hum_areas[area] else "secondary"):
+                        st.session_state.hum_areas[area] = not st.session_state.hum_areas[area]
+                        st.rerun()
+        else:
+            cols = st.columns(5)
+            for i, area in enumerate(areas):
+                with cols[i]:
+                    if st.button(area, key=f"hum_btn_{area}", use_container_width=True,
+                                type="primary" if st.session_state.hum_areas[area] else "secondary"):
+                        st.session_state.hum_areas[area] = not st.session_state.hum_areas[area]
+                        st.rerun()
         
         selected = [area for area, selected in st.session_state.hum_areas.items() if selected]
         if selected:
@@ -636,7 +783,7 @@ elif page == "💧 数据中心湿度":
         else:
             st.warning("请至少选择一个监控区域")
         
-        # 湿度图表 - 只显示最近数据
+        # 湿度图表
         hum_dict = {}
         area_mapping = {
             '主机房': 'ZJFHum',
@@ -651,13 +798,14 @@ elif page == "💧 数据中心湿度":
                 data_key = area_mapping[area]
                 hum_dict[area] = all_data[data_key]
         
-        fig, has_data = plot_recent_data(all_data['time'], hum_dict, '数据中心湿度监控 (最近数据)', '湿度 (%)', recent_points=12)
+        fig, has_data = plot_recent_data(all_data['time'], hum_dict, '数据中心湿度监控 (最近数据)', '湿度 (%)', 
+                                       recent_points=8 if st.session_state.is_mobile else 12)
         if has_data:
             st.pyplot(fig)
         else:
             st.warning("所选区域暂无湿度数据")
         
-        # 湿度统计 - 显示最大值最小值
+        # 湿度统计 - 移动端适配
         st.subheader("📊 湿度统计")
         for area in areas:
             if st.session_state.hum_areas[area]:
@@ -672,7 +820,12 @@ elif page == "💧 数据中心湿度":
                     min_hum = np.min(valid_data)
                     
                     st.write(f"**{area}**")
-                    col1, col2, col3, col4 = st.columns(4)
+                    if st.session_state.is_mobile:
+                        # 移动端使用2x2布局
+                        col1, col2 = st.columns(2)
+                        col3, col4 = st.columns(2)
+                    else:
+                        col1, col2, col3, col4 = st.columns(4)
                     
                     with col1:
                         st.metric("当前湿度", f"{latest_hum:.1f}%")
@@ -688,6 +841,7 @@ elif page == "💧 数据中心湿度":
     else:
         st.info("⏳ 数据加载中，请稍候...")
 
+# 其他页面保持不变...
 elif page == "⚡ PUE指标":
     st.title("⚡ PUE能效指标监控")
     
@@ -695,8 +849,9 @@ elif page == "⚡ PUE指标":
         all_data = st.session_state.all_data
         
         if all_data['PUE'] and any(x != 0 for x in all_data['PUE']):
-            # PUE图表 - 只显示最近数据
-            fig, has_data = plot_recent_data(all_data['time'], {'PUE': all_data['PUE']}, 'PUE能效指标 (最近数据)', 'PUE值', colors=['blue'], recent_points=12)
+            # PUE图表
+            fig, has_data = plot_recent_data(all_data['time'], {'PUE': all_data['PUE']}, 'PUE能效指标 (最近数据)', 'PUE值', colors=['blue'], 
+                                           recent_points=8 if st.session_state.is_mobile else 12)
             if has_data:
                 ax = fig.axes[0]
                 font_prop = get_font_properties()
@@ -716,7 +871,12 @@ elif page == "⚡ PUE指标":
             valid_pue = [x for x in all_data['PUE'] if x != 0]
             latest_pue, avg_pue = valid_pue[-1], np.mean(valid_pue)
             
-            col1, col2, col3, col4 = st.columns(4)
+            if st.session_state.is_mobile:
+                col1, col2 = st.columns(2)
+                col3, col4 = st.columns(2)
+            else:
+                col1, col2, col3, col4 = st.columns(4)
+                
             col1.metric("最新PUE", f"{latest_pue:.3f}")
             col2.metric("平均PUE", f"{avg_pue:.3f}")
             col3.metric("最低PUE", f"{np.min(valid_pue):.3f}")
@@ -745,8 +905,9 @@ elif page == "🎈 氢气传感器":
         all_data = st.session_state.all_data
         
         if all_data['hydr'] and any(x != 0 for x in all_data['hydr']):
-            # 氢气图表 - 只显示最近数据
-            fig, has_data = plot_recent_data(all_data['time'], {'氢气浓度': all_data['hydr']}, '氢气浓度监测 (最近数据)', '氢气浓度 (ppm)', colors=['purple'], recent_points=12)
+            # 氢气图表
+            fig, has_data = plot_recent_data(all_data['time'], {'氢气浓度': all_data['hydr']}, '氢气浓度监测 (最近数据)', '氢气浓度 (ppm)', colors=['purple'], 
+                                           recent_points=8 if st.session_state.is_mobile else 12)
             if has_data:
                 ax = fig.axes[0]
                 font_prop = get_font_properties()
@@ -762,7 +923,12 @@ elif page == "🎈 氢气传感器":
             valid_hydr = [x for x in all_data['hydr'] if x != 0]
             latest_hydr, avg_hydr = valid_hydr[-1], np.mean(valid_hydr)
             
-            col1, col2, col3 = st.columns(3)
+            if st.session_state.is_mobile:
+                col1, col2 = st.columns(2)
+                col3 = st.columns(1)[0]
+            else:
+                col1, col2, col3 = st.columns(3)
+                
             col1.metric("最新浓度", f"{latest_hydr:.1f}ppm")
             col2.metric("平均浓度", f"{avg_hydr:.1f}ppm")
             col3.metric("最高浓度", f"{np.max(valid_hydr):.1f}ppm")
