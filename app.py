@@ -7,10 +7,74 @@ from io import BytesIO
 import pandas as pd
 import requests
 import random
+import os
+import matplotlib.font_manager as fm
 
-# 设置中文字体
-plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
-plt.rcParams['axes.unicode_minus'] = False
+# 强制使用当前目录的字体文件
+def setup_chinese_font():
+    """强制使用当前目录的字体文件，如果找不到则报错"""
+    try:
+        # 1. 强制查找当前目录的字体文件
+        current_dir_fonts = [
+            'SimHei.ttf',  # 主要字体
+            'simhei.ttf',  # 小写版本
+        ]
+        
+        font_path = None
+        
+        # 强制检查当前目录
+        for font_file in current_dir_fonts:
+            if os.path.exists(font_file):
+                font_path = os.path.abspath(font_file)
+                break
+        
+        # 2. 如果找不到字体文件，抛出错误
+        if not font_path:
+            raise FileNotFoundError("未在当前目录找到 SimHei.ttf 字体文件")
+        
+        # 3. 强制设置字体
+        st.info(f"强制使用字体文件: {os.path.basename(font_path)}")
+        
+        # 清除字体缓存
+        if hasattr(fm, '_rebuild'):
+            fm._rebuild()
+        
+        # 设置字体属性
+        font_prop = fm.FontProperties(fname=font_path)
+        
+        # 强制设置全局字体
+        plt.rcParams['font.family'] = [font_prop.get_name()]
+        plt.rcParams['font.sans-serif'] = [font_prop.get_name()]
+        plt.rcParams['axes.unicode_minus'] = False
+        
+        # 验证字体是否生效
+        test_fig, test_ax = plt.subplots(figsize=(2, 1))
+        test_ax.text(0.5, 0.5, '中文测试', fontproperties=font_prop, 
+                    ha='center', va='center', fontsize=12)
+        test_ax.set_xlim(0, 1)
+        test_ax.set_ylim(0, 1)
+        test_ax.axis('off')
+        plt.close(test_fig)
+        
+        st.success("字体设置成功！")
+        return font_path
+        
+    except Exception as e:
+        st.error(f"字体设置失败: {str(e)}")
+        st.error("请确保 SimHei.ttf 文件在当前目录中")
+        # 如果失败，停止程序运行
+        st.stop()
+        return None
+
+# 初始化字体
+font_path = setup_chinese_font()
+
+def get_font_properties():
+    """获取字体属性"""
+    try:
+        return fm.FontProperties(fname=font_path)
+    except:
+        return None
 
 def logo_to_base64(image):
     buffered = BytesIO()
@@ -244,6 +308,9 @@ def plot_recent_data(time_data, data_dict, title, ylabel, colors=None, recent_po
     if colors is None:
         colors = ['red', 'blue', 'green', 'orange', 'purple']
     
+    # 获取字体属性
+    font_prop = get_font_properties()
+    
     fig, ax = plt.subplots(figsize=(10, 4))
     has_data = False
     
@@ -263,19 +330,72 @@ def plot_recent_data(time_data, data_dict, title, ylabel, colors=None, recent_po
                 has_data = True
     
     if has_data:
-        ax.set_title(title, fontsize=12, fontweight='bold')
-        ax.set_ylabel(ylabel, fontsize=10)
-        ax.set_xlabel('时间', fontsize=10)
-        ax.legend(fontsize=8)
+        if font_prop:
+            ax.set_title(title, fontproperties=font_prop, fontsize=12, fontweight='bold')
+            ax.set_ylabel(ylabel, fontproperties=font_prop, fontsize=10)
+            ax.set_xlabel('时间', fontproperties=font_prop, fontsize=10)
+            ax.legend(prop=font_prop, fontsize=8)
+            plt.xticks(rotation=45, fontproperties=font_prop, fontsize=8)
+        else:
+            ax.set_title(title, fontsize=12, fontweight='bold')
+            ax.set_ylabel(ylabel, fontsize=10)
+            ax.set_xlabel('Time', fontsize=10)
+            ax.legend(fontsize=8)
+            plt.xticks(rotation=45, fontsize=8)
+        
         ax.grid(True, alpha=0.3)
-        plt.xticks(rotation=45, fontsize=8)
         plt.tight_layout()
         return fig, True
     return None, False
 
+# 字体验证函数
+def verify_chinese_font():
+    """验证中文字体是否正常工作"""
+    try:
+        font_prop = get_font_properties()
+        
+        # 创建测试图表
+        fig, ax = plt.subplots(figsize=(6, 3))
+        
+        # 测试中文文本
+        test_texts = ['数据中心监控', '温度湿度', '中文测试']
+        
+        for i, text in enumerate(test_texts):
+            if font_prop:
+                ax.text(0.5, 0.8 - i*0.3, text, ha='center', va='center', 
+                       fontsize=16, transform=ax.transAxes, fontproperties=font_prop)
+            else:
+                ax.text(0.5, 0.8 - i*0.3, text, ha='center', va='center', 
+                       fontsize=16, transform=ax.transAxes)
+        
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.axis('off')
+        
+        if font_prop:
+            ax.set_title('字体测试', fontproperties=font_prop, fontsize=18, fontweight='bold')
+        else:
+            ax.set_title('Font Test', fontsize=18, fontweight='bold')
+        
+        plt.tight_layout()
+        return fig
+    except Exception as e:
+        st.error(f"字体验证失败: {e}")
+        return None
+
 # 页面路由
 if page == "📊 主界面":
     st.title("数据中心综合监控系统")
+    
+    # 字体测试（开发时使用，正式部署时可注释掉）
+    with st.expander("🔧 字体测试", expanded=False):
+        if st.button("测试中文字体显示"):
+            test_fig = verify_chinese_font()
+            if test_fig:
+                st.pyplot(test_fig)
+                st.success("中文字体显示正常！")
+            else:
+                st.error("中文字体显示失败！")
     
     if st.session_state.data_loaded and st.session_state.all_data:
         all_data = st.session_state.all_data
@@ -427,8 +547,13 @@ if page == "📊 主界面":
                 fig, has_data = plot_recent_data(all_data['time'], pue_dict, 'PUE趋势 (最近数据)', 'PUE值', colors=['blue'], recent_points=8)
                 if has_data:
                     ax = fig.axes[0]
-                    ax.axhline(y=1.5, color='green', linestyle='--', alpha=0.5, label='目标值 1.5')
-                    ax.legend()
+                    font_prop = get_font_properties()
+                    if font_prop:
+                        ax.axhline(y=1.5, color='green', linestyle='--', alpha=0.5, label='目标值 1.5')
+                        ax.legend(prop=font_prop)
+                    else:
+                        ax.axhline(y=1.5, color='green', linestyle='--', alpha=0.5, label='Target 1.5')
+                        ax.legend()
                     st.pyplot(fig)
                 else:
                     st.info("暂无PUE数据")
@@ -571,10 +696,17 @@ elif page == "⚡ PUE指标":
             fig, has_data = plot_recent_data(all_data['time'], {'PUE': all_data['PUE']}, 'PUE能效指标 (最近数据)', 'PUE值', colors=['blue'], recent_points=12)
             if has_data:
                 ax = fig.axes[0]
-                ax.axhline(y=1.5, color='green', linestyle='--', alpha=0.7, label='优秀目标 (1.5)')
-                ax.axhline(y=1.6, color='orange', linestyle='--', alpha=0.7, label='良好目标 (1.6)')
-                ax.axhline(y=1.8, color='red', linestyle='--', alpha=0.7, label='警戒线 (1.8)')
-                ax.legend()
+                font_prop = get_font_properties()
+                if font_prop:
+                    ax.axhline(y=1.5, color='green', linestyle='--', alpha=0.7, label='优秀目标 (1.5)')
+                    ax.axhline(y=1.6, color='orange', linestyle='--', alpha=0.7, label='良好目标 (1.6)')
+                    ax.axhline(y=1.8, color='red', linestyle='--', alpha=0.7, label='警戒线 (1.8)')
+                    ax.legend(prop=font_prop)
+                else:
+                    ax.axhline(y=1.5, color='green', linestyle='--', alpha=0.7, label='Excellent (1.5)')
+                    ax.axhline(y=1.6, color='orange', linestyle='--', alpha=0.7, label='Good (1.6)')
+                    ax.axhline(y=1.8, color='red', linestyle='--', alpha=0.7, label='Warning (1.8)')
+                    ax.legend()
                 st.pyplot(fig)
             
             # PUE统计
@@ -614,8 +746,13 @@ elif page == "🎈 氢气传感器":
             fig, has_data = plot_recent_data(all_data['time'], {'氢气浓度': all_data['hydr']}, '氢气浓度监测 (最近数据)', '氢气浓度 (ppm)', colors=['purple'], recent_points=12)
             if has_data:
                 ax = fig.axes[0]
-                ax.axhline(y=50, color='green', linestyle='--', alpha=0.7, label='安全阈值 (50ppm)')
-                ax.legend()
+                font_prop = get_font_properties()
+                if font_prop:
+                    ax.axhline(y=50, color='green', linestyle='--', alpha=0.7, label='安全阈值 (50ppm)')
+                    ax.legend(prop=font_prop)
+                else:
+                    ax.axhline(y=50, color='green', linestyle='--', alpha=0.7, label='Safety Threshold (50ppm)')
+                    ax.legend()
                 st.pyplot(fig)
             
             # 氢气统计
