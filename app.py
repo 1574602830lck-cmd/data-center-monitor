@@ -17,41 +17,45 @@ try:
 except ImportError:
     st.error("缺少 python-docx 库")
 
-# 中文字体设置函数
+# 下载并设置中文字体
 def setup_chinese_font():
-    """设置中文字体，兼容 Streamlit Cloud"""
+    """下载并设置中文字体"""
     try:
-        # 尝试在云端环境中使用支持中文的字体
-        if os.path.exists('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'):
-            # 使用 DejaVu Sans，它支持一些中文
-            plt.rcParams['font.family'] = ['DejaVu Sans']
-        elif os.path.exists('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'):
-            # 使用 Liberation Sans
-            plt.rcParams['font.family'] = ['Liberation Sans']
+        # 检查是否在Streamlit Cloud环境
+        if 'STREAMLIT_SHARING_MODE' in os.environ or 'STREAMLIT_SERVER_HEADLESS' in os.environ:
+            # 在云端环境，下载中文字体
+            font_url = "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf"
+            font_path = "/tmp/NotoSansCJKsc-Regular.otf"
+            
+            if not os.path.exists(font_path):
+                response = requests.get(font_url)
+                with open(font_path, 'wb') as f:
+                    f.write(response.content)
+            
+            # 设置matplotlib使用下载的字体
+            if os.path.exists(font_path):
+                fm.fontManager.addfont(font_path)
+                prop = fm.FontProperties(fname=font_path)
+                plt.rcParams['font.family'] = prop.get_name()
+                plt.rcParams['font.sans-serif'] = [prop.get_name(), 'DejaVu Sans', 'Arial Unicode MS', 'sans-serif']
+            else:
+                # 如果下载失败，使用系统字体
+                plt.rcParams['font.family'] = ['DejaVu Sans', 'Arial Unicode MS', 'sans-serif']
         else:
-            # 使用系统默认的 sans-serif 字体
-            plt.rcParams['font.family'] = ['sans-serif']
+            # 本地环境使用原有设置
+            plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans', 'Arial Unicode MS', 'sans-serif']
         
-        # 设置字体回退列表
-        plt.rcParams['font.sans-serif'] = [
-            'DejaVu Sans', 
-            'Arial Unicode MS', 
-            'SimHei', 
-            'Microsoft YaHei', 
-            'WenQuanYi Micro Hei',
-            'sans-serif'
-        ]
         plt.rcParams['axes.unicode_minus'] = False
         
         # 测试字体
         fig, ax = plt.subplots(1, 1, figsize=(2, 2))
-        ax.text(0.5, 0.5, '测试', fontsize=12, ha='center', va='center')
+        ax.text(0.5, 0.5, '测试中文', fontsize=12, ha='center', va='center')
         plt.close(fig)
         
     except Exception as e:
         st.warning(f"字体设置警告: {e}")
         # 最基本的回退设置
-        plt.rcParams['font.family'] = ['sans-serif']
+        plt.rcParams['font.family'] = ['DejaVu Sans', 'sans-serif']
         plt.rcParams['axes.unicode_minus'] = False
 
 # 初始化字体设置
@@ -254,34 +258,28 @@ def extract_all_data(rawcontent):
         'PUE': PUE
     }
 
-def create_chart_with_fallback():
-    """创建图表时处理字体问题"""
+# 创建图表时设置字体
+def create_chart():
+    """创建图表并确保中文字体正常工作"""
     fig, ax = plt.subplots(figsize=(10, 4))
     ax.set_facecolor('white')
-    return fig, ax
-
-def set_chart_labels(ax, xlabel, ylabel, title):
-    """设置图表标签，处理中文字体问题"""
+    
+    # 设置图表字体
     try:
-        ax.set_xlabel(xlabel, fontsize=9)
-        ax.set_ylabel(ylabel, fontsize=9)
-        ax.set_title(title, fontsize=11)
+        # 获取当前字体
+        current_font = plt.rcParams['font.family']
+        if isinstance(current_font, list):
+            current_font = current_font[0]
+        
+        # 设置标题和标签字体
+        title_font = {'fontname': current_font, 'fontsize': 11}
+        label_font = {'fontname': current_font, 'fontsize': 9}
+        tick_font = {'fontname': current_font, 'fontsize': 8}
+        
+        return fig, ax, title_font, label_font, tick_font
     except:
-        # 如果中文显示失败，使用英文标签
-        en_labels = {
-            '日期': 'Date',
-            '温度 （℃）': 'Temperature (℃)',
-            '湿度 （%）': 'Humidity (%)',
-            '数据中心温度走势表': 'Data Center Temperature Trend',
-            '数据中心湿度走势表': 'Data Center Humidity Trend',
-            '数据中心PUE能效走势表': 'Data Center PUE Trend',
-            '电池间氢气浓度监测': 'Hydrogen Concentration Monitoring',
-            '氢气浓度 (ppm)': 'Hydrogen Concentration (ppm)',
-            'PUE值': 'PUE Value'
-        }
-        ax.set_xlabel(en_labels.get(xlabel, xlabel), fontsize=9)
-        ax.set_ylabel(en_labels.get(ylabel, ylabel), fontsize=9)
-        ax.set_title(en_labels.get(title, title), fontsize=11)
+        # 如果字体设置失败，使用默认设置
+        return fig, ax, {'fontsize': 11}, {'fontsize': 9}, {'fontsize': 8}
 
 # 侧边栏
 with st.sidebar:
@@ -418,7 +416,7 @@ elif page == "🌡️ 数据中心温度":
             col_chart, col_info = st.columns([3, 1])
             
             with col_chart:
-                fig, ax = create_chart_with_fallback()
+                fig, ax, title_font, label_font, tick_font = create_chart()
                 
                 if st.session_state.active_plots:
                     for name in st.session_state.active_plots:
@@ -435,22 +433,11 @@ elif page == "🌡️ 数据中心温度":
                                    label=name, 
                                    linewidth=1.5)
                     
-                    try:
-                        ax.legend(loc='upper right', fontsize=8)
-                    except:
-                        # 如果图例中文显示失败，使用英文标签
-                        en_legend = {
-                            "主机房温度": "Main Room Temp",
-                            "冷通道温度": "Cold Aisle Temp", 
-                            "电池间温度": "Battery Room Temp",
-                            "运营间温度": "Operation Room Temp",
-                            "配电间温度": "Power Room Temp"
-                        }
-                        legend_labels = [en_legend.get(name, name) for name in st.session_state.active_plots]
-                        ax.legend(legend_labels, loc='upper right', fontsize=8)
-                    
+                    ax.legend(loc='upper right', fontsize=8)
                     ax.grid(True, linestyle='--', alpha=0.7)
-                    set_chart_labels(ax, '日期', '温度 （℃）', '数据中心温度走势表')
+                    ax.set_xlabel('日期', **label_font)
+                    ax.set_ylabel('温度 （℃）', **label_font)
+                    ax.set_title('数据中心温度走势表', **title_font)
                     
                     plt.xticks(rotation=45, fontsize=8)
                     plt.yticks(fontsize=8)
@@ -463,7 +450,9 @@ elif page == "🌡️ 数据中心温度":
                     ax.set_xlim(0, 10)
                     ax.set_ylim(0, 40)
                     ax.grid(True, linestyle='--', alpha=0.7)
-                    set_chart_labels(ax, '日期', '温度 （℃）', '数据中心温度走势表')
+                    ax.set_xlabel('日期', **label_font)
+                    ax.set_ylabel('温度 （℃）', **label_font)
+                    ax.set_title('数据中心温度走势表', **title_font)
                 
                 st.pyplot(fig)
             
@@ -530,7 +519,7 @@ elif page == "💧 数据中心湿度":
             col_chart, col_info = st.columns([3, 1])
             
             with col_chart:
-                fig, ax = create_chart_with_fallback()
+                fig, ax, title_font, label_font, tick_font = create_chart()
                 
                 if st.session_state.active_plots:
                     for name in st.session_state.active_plots:
@@ -547,22 +536,11 @@ elif page == "💧 数据中心湿度":
                                    label=name, 
                                    linewidth=1.5)
                     
-                    try:
-                        ax.legend(loc='upper right', fontsize=8)
-                    except:
-                        # 如果图例中文显示失败，使用英文标签
-                        en_legend = {
-                            "主机房湿度": "Main Room Humi",
-                            "冷通道湿度": "Cold Aisle Humi", 
-                            "电池间湿度": "Battery Room Humi",
-                            "运营间湿度": "Operation Room Humi",
-                            "配电间湿度": "Power Room Humi"
-                        }
-                        legend_labels = [en_legend.get(name, name) for name in st.session_state.active_plots]
-                        ax.legend(legend_labels, loc='upper right', fontsize=8)
-                    
+                    ax.legend(loc='upper right', fontsize=8)
                     ax.grid(True, linestyle='--', alpha=0.7)
-                    set_chart_labels(ax, '日期', '湿度 （%）', '数据中心湿度走势表')
+                    ax.set_xlabel('日期', **label_font)
+                    ax.set_ylabel('湿度 （%）', **label_font)
+                    ax.set_title('数据中心湿度走势表', **title_font)
                     
                     plt.xticks(rotation=45, fontsize=8)
                     plt.yticks(fontsize=8)
@@ -575,7 +553,9 @@ elif page == "💧 数据中心湿度":
                     ax.set_xlim(0, 10)
                     ax.set_ylim(0, 100)
                     ax.grid(True, linestyle='--', alpha=0.7)
-                    set_chart_labels(ax, '日期', '湿度 （%）', '数据中心湿度走势表')
+                    ax.set_xlabel('日期', **label_font)
+                    ax.set_ylabel('湿度 （%）', **label_font)
+                    ax.set_title('数据中心湿度走势表', **title_font)
                 
                 st.pyplot(fig)
             
@@ -612,7 +592,7 @@ elif page == "⚡ PUE指标":
             if time_data and pue_data:
                 st.subheader("📈 PUE走势图表")
                 
-                fig, ax = create_chart_with_fallback()
+                fig, ax, title_font, label_font, tick_font = create_chart()
                 
                 # 确保时间序列和数据长度匹配
                 min_len = min(len(time_data), len(pue_data))
@@ -620,13 +600,11 @@ elif page == "⚡ PUE指标":
                 ax.axhline(y=1.5, color='green', linestyle='--', alpha=0.7, label='目标值 (1.5)')
                 ax.axhline(y=1.6, color='orange', linestyle='--', alpha=0.7, label='警戒值 (1.6)')
                 
-                try:
-                    ax.legend(loc='upper right', fontsize=8)
-                except:
-                    ax.legend(['PUE', 'Target (1.5)', 'Warning (1.6)'], loc='upper right', fontsize=8)
-                
+                ax.legend(loc='upper right', fontsize=8)
                 ax.grid(True, linestyle='--', alpha=0.7)
-                set_chart_labels(ax, '日期', 'PUE值', '数据中心PUE能效走势表')
+                ax.set_xlabel('日期', **label_font)
+                ax.set_ylabel('PUE值', **label_font)
+                ax.set_title('数据中心PUE能效走势表', **title_font)
                 
                 plt.xticks(rotation=45, fontsize=8)
                 plt.yticks(fontsize=8)
@@ -669,19 +647,17 @@ elif page == "🎈 氢气传感器":
             if time_data and hydr_data:
                 st.subheader("📈 氢气浓度走势图表")
                 
-                fig, ax = create_chart_with_fallback()
+                fig, ax, title_font, label_font, tick_font = create_chart()
                 
                 # 确保时间序列和数据长度匹配
                 min_len = min(len(time_data), len(hydr_data))
                 ax.plot(time_data[:min_len], hydr_data[:min_len], color='purple', marker='D', markersize=4, linewidth=1.5)
                 
-                try:
-                    ax.legend(['氢气浓度'], loc='upper right', fontsize=8)
-                except:
-                    ax.legend(['Hydrogen Concentration'], loc='upper right', fontsize=8)
-                
+                ax.legend(['氢气浓度'], loc='upper right', fontsize=8)
                 ax.grid(True, linestyle='--', alpha=0.7)
-                set_chart_labels(ax, '日期', '氢气浓度 (ppm)', '电池间氢气浓度监测')
+                ax.set_xlabel('日期', **label_font)
+                ax.set_ylabel('氢气浓度 (ppm)', **label_font)
+                ax.set_title('电池间氢气浓度监测', **title_font)
                 
                 plt.xticks(rotation=45, fontsize=8)
                 plt.yticks(fontsize=8)
