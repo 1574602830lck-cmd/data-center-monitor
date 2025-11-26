@@ -59,7 +59,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 精简的CSS样式 - 专注移动端适配
+# 精简的CSS样式
 st.markdown("""
 <style>
 /* 隐藏Streamlit默认元素 */
@@ -71,41 +71,6 @@ header {visibility: hidden;}
 .block-container {
     padding-top: 1rem;
     padding-bottom: 1rem;
-}
-
-/* 移动端适配 */
-@media (max-width: 768px) {
-    .main-header {
-        font-size: 1.5em !important;
-        padding: 10px !important;
-    }
-    
-    .stats-card {
-        padding: 12px !important;
-        margin-bottom: 8px !important;
-    }
-    
-    .stats-card .value {
-        font-size: 1.3em !important;
-    }
-    
-    .stats-card h3 {
-        font-size: 0.8em !important;
-    }
-    
-    /* 移动端按钮调整 - 更小的按钮 */
-    .stButton button {
-        font-size: 10px !important;
-        padding: 4px 6px !important;
-        margin: 1px !important;
-        height: auto !important;
-        min-height: 28px !important;
-    }
-    
-    /* 移动端列布局 */
-    .mobile-stack {
-        flex-direction: column;
-    }
 }
 
 /* 基础卡片样式 */
@@ -170,24 +135,6 @@ header {visibility: hidden;}
 .quality-good { background-color: #00b8d9; }
 .quality-fair { background-color: #ffab00; }
 .quality-poor { background-color: #ff5630; }
-
-/* 更小的按钮样式 */
-.compact-button {
-    font-size: 11px !important;
-    padding: 3px 8px !important;
-    margin: 1px !important;
-}
-
-/* 紧凑的区域选择布局 */
-.area-selector {
-    gap: 4px !important;
-}
-
-/* 更小的图表容器 */
-.small-chart {
-    margin: 0;
-    padding: 0;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -273,8 +220,8 @@ if not st.session_state.data_loaded:
             st.session_state.all_data = all_data
             st.session_state.data_loaded = True
 
-# 图表绘制函数 - 更小的图表尺寸
-def plot_recent_data(time_data, data_dict, title, ylabel, colors=None, recent_points=8, figsize=(4, 2)):
+# 图表绘制函数
+def plot_recent_data(time_data, data_dict, title, ylabel, colors=None, recent_points=8, figsize=(6.5, 3.2)):
     if colors is None:
         colors = ['red', 'blue', 'green', 'orange', 'purple']
     
@@ -296,41 +243,37 @@ def plot_recent_data(time_data, data_dict, title, ylabel, colors=None, recent_po
             
             if valid_data:
                 ax.plot(valid_times, valid_data, label=label, color=colors[i % len(colors)], 
-                       linewidth=1.0, marker='o', markersize=1.2)  # 减小线条和标记大小
+                       linewidth=1.5, marker='o', markersize=2.5)
                 has_data = True
     
     if has_data:
-        # 更小的字体大小
-        title_size = 8
-        label_size = 6
-        legend_size = 5
-        tick_size = 5
+        # 字体大小设置
+        title_size = 10
+        label_size = 8
+        legend_size = 7
+        tick_size = 7
         
         if font_prop:
-            ax.set_title(title, fontproperties=font_prop, fontsize=title_size, fontweight='bold')
+            ax.set_title(title, fontproperties=font_prop, fontsize=title_size, fontweight='bold', pad=8)
             ax.set_ylabel(ylabel, fontproperties=font_prop, fontsize=label_size)
             ax.set_xlabel('时间', fontproperties=font_prop, fontsize=label_size)
-            ax.legend(prop=font_prop, fontsize=legend_size, loc='upper right')
+            # 图例放在右上角，去除边框
+            ax.legend(prop=font_prop, fontsize=legend_size, loc='upper right', frameon=False)
             plt.xticks(rotation=45, fontproperties=font_prop, fontsize=tick_size)
+            plt.yticks(fontproperties=font_prop, fontsize=tick_size)
         else:
-            ax.set_title(title, fontsize=title_size, fontweight='bold')
+            ax.set_title(title, fontsize=title_size, fontweight='bold', pad=8)
             ax.set_ylabel(ylabel, fontsize=label_size)
             ax.set_xlabel('Time', fontsize=label_size)
-            ax.legend(fontsize=legend_size, loc='upper right')
+            # 图例放在右上角，去除边框
+            ax.legend(fontsize=legend_size, loc='upper right', frameon=False)
             plt.xticks(rotation=45, fontsize=tick_size)
+            plt.yticks(fontsize=tick_size)
         
         ax.grid(True, alpha=0.3)
         plt.tight_layout()
         return fig, True
     return None, False
-
-# 检测移动端 - 简化版本
-def is_mobile():
-    """检测是否为移动端"""
-    return False  # 统一布局，不再区分移动端和桌面端
-
-# 设置移动端状态
-st.session_state.is_mobile = is_mobile()
 
 # 页面路由
 if page == "📊 主界面":
@@ -469,7 +412,7 @@ if page == "📊 主界面":
         with col1:
             temp_dict = {'主机房': all_data['ZJFTemp'], '冷通道': all_data['LTDTemp']}
             fig, has_data = plot_recent_data(all_data['time'], temp_dict, '温度趋势', '温度 (℃)', 
-                                           recent_points=6, figsize=(3.5, 2))
+                                           recent_points=6, figsize=(5.5, 2.8))
             if has_data:
                 st.pyplot(fig)
             else:
@@ -479,16 +422,16 @@ if page == "📊 主界面":
             if all_data['PUE'] and any(x != 0 for x in all_data['PUE']):
                 pue_dict = {'PUE': all_data['PUE']}
                 fig, has_data = plot_recent_data(all_data['time'], pue_dict, 'PUE趋势', 'PUE值', 
-                                               colors=['blue'], recent_points=6, figsize=(3.5, 2))
+                                               colors=['blue'], recent_points=6, figsize=(5.5, 2.8))
                 if has_data:
                     ax = fig.axes[0]
                     font_prop = get_font_properties()
                     if font_prop:
                         ax.axhline(y=1.5, color='green', linestyle='--', alpha=0.5, label='目标值 1.5')
-                        ax.legend(prop=font_prop, fontsize=4)
+                        ax.legend(prop=font_prop, fontsize=7, loc='upper right', frameon=False)
                     else:
                         ax.axhline(y=1.5, color='green', linestyle='--', alpha=0.5, label='Target 1.5')
-                        ax.legend(fontsize=4)
+                        ax.legend(fontsize=7, loc='upper right', frameon=False)
                     st.pyplot(fig)
                 else:
                     st.info("暂无PUE数据")
@@ -504,11 +447,10 @@ elif page == "🌡️ 数据中心温度":
     if st.session_state.data_loaded and st.session_state.all_data:
         all_data = st.session_state.all_data
         
-        # 区域选择 - 使用3列布局，更紧凑
+        # 区域选择
         st.subheader("📍 选择监控区域")
         areas = ['主机房', '冷通道', '电池间', '运营间', '配电间']
         
-        # 使用3列布局，按钮更紧凑
         cols = st.columns(3)
         for i, area in enumerate(areas):
             with cols[i % 3]:
@@ -523,7 +465,7 @@ elif page == "🌡️ 数据中心温度":
         else:
             st.warning("请至少选择一个监控区域")
         
-        # 温度图表 - 更小的图表
+        # 温度图表
         temp_dict = {}
         area_mapping = {
             '主机房': 'ZJFTemp', '冷通道': 'LTDTemp', '电池间': 'DCJTemp',
@@ -536,7 +478,7 @@ elif page == "🌡️ 数据中心温度":
                 temp_dict[area] = all_data[data_key]
         
         fig, has_data = plot_recent_data(all_data['time'], temp_dict, '数据中心温度监控', '温度 (℃)', 
-                                       recent_points=6, figsize=(5, 2.2))
+                                       recent_points=6, figsize=(7, 3.5))
         if has_data:
             st.pyplot(fig)
         else:
@@ -580,11 +522,10 @@ elif page == "💧 数据中心湿度":
     if st.session_state.data_loaded and st.session_state.all_data:
         all_data = st.session_state.all_data
         
-        # 区域选择 - 使用3列布局，更紧凑
+        # 区域选择
         st.subheader("📍 选择监控区域")
         areas = ['主机房', '冷通道', '电池间', '运营间', '配电间']
         
-        # 使用3列布局，按钮更紧凑
         cols = st.columns(3)
         for i, area in enumerate(areas):
             with cols[i % 3]:
@@ -599,7 +540,7 @@ elif page == "💧 数据中心湿度":
         else:
             st.warning("请至少选择一个监控区域")
         
-        # 湿度图表 - 更小的图表
+        # 湿度图表
         hum_dict = {}
         area_mapping = {
             '主机房': 'ZJFHum', '冷通道': 'LTDHum', '电池间': 'DCJHum',
@@ -612,7 +553,7 @@ elif page == "💧 数据中心湿度":
                 hum_dict[area] = all_data[data_key]
         
         fig, has_data = plot_recent_data(all_data['time'], hum_dict, '数据中心湿度监控', '湿度 (%)', 
-                                       recent_points=6, figsize=(5, 2.2))
+                                       recent_points=6, figsize=(7, 3.5))
         if has_data:
             st.pyplot(fig)
         else:
@@ -657,9 +598,9 @@ elif page == "⚡ PUE指标":
         all_data = st.session_state.all_data
         
         if all_data['PUE'] and any(x != 0 for x in all_data['PUE']):
-            # PUE图表 - 更小的图表
+            # PUE图表
             fig, has_data = plot_recent_data(all_data['time'], {'PUE': all_data['PUE']}, 'PUE能效指标', 'PUE值', 
-                                           colors=['blue'], recent_points=6, figsize=(5, 2.2))
+                                           colors=['blue'], recent_points=6, figsize=(7, 3.5))
             if has_data:
                 ax = fig.axes[0]
                 font_prop = get_font_properties()
@@ -667,12 +608,12 @@ elif page == "⚡ PUE指标":
                     ax.axhline(y=1.5, color='green', linestyle='--', alpha=0.7, label='优秀目标 (1.5)')
                     ax.axhline(y=1.6, color='orange', linestyle='--', alpha=0.7, label='良好目标 (1.6)')
                     ax.axhline(y=1.8, color='red', linestyle='--', alpha=0.7, label='警戒线 (1.8)')
-                    ax.legend(prop=font_prop, fontsize=5)
+                    ax.legend(prop=font_prop, fontsize=7, loc='upper right', frameon=False)
                 else:
                     ax.axhline(y=1.5, color='green', linestyle='--', alpha=0.7, label='Excellent (1.5)')
                     ax.axhline(y=1.6, color='orange', linestyle='--', alpha=0.7, label='Good (1.6)')
                     ax.axhline(y=1.8, color='red', linestyle='--', alpha=0.7, label='Warning (1.8)')
-                    ax.legend(fontsize=5)
+                    ax.legend(fontsize=7, loc='upper right', frameon=False)
                 st.pyplot(fig)
             
             # PUE统计
@@ -710,18 +651,18 @@ elif page == "🎈 氢气传感器":
         all_data = st.session_state.all_data
         
         if all_data['hydr'] and any(x != 0 for x in all_data['hydr']):
-            # 氢气图表 - 更小的图表
+            # 氢气图表
             fig, has_data = plot_recent_data(all_data['time'], {'氢气浓度': all_data['hydr']}, '氢气浓度监测', '氢气浓度 (ppm)', 
-                                           colors=['purple'], recent_points=6, figsize=(5, 2.2))
+                                           colors=['purple'], recent_points=6, figsize=(7, 3.5))
             if has_data:
                 ax = fig.axes[0]
                 font_prop = get_font_properties()
                 if font_prop:
                     ax.axhline(y=50, color='green', linestyle='--', alpha=0.7, label='安全阈值 (50ppm)')
-                    ax.legend(prop=font_prop, fontsize=5)
+                    ax.legend(prop=font_prop, fontsize=7, loc='upper right', frameon=False)
                 else:
                     ax.axhline(y=50, color='green', linestyle='--', alpha=0.7, label='Safety Threshold (50ppm)')
-                    ax.legend(fontsize=5)
+                    ax.legend(fontsize=7, loc='upper right', frameon=False)
                 st.pyplot(fig)
             
             # 氢气统计
